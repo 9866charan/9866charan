@@ -1,0 +1,153 @@
+library(dplyr)  # For data manipulation
+
+library(readr)  # For reading data
+
+library(car)    # For diagnostic plots
+getwd()
+
+
+# Load the readxl package
+library(readxl)
+# Load your data
+weather_data <- read_excel("airport.xlsx")  # Replace with your actual file path
+View(weather_data)
+
+
+# Check the structure of your data
+str(weather_data)
+
+# Check for missing values
+sum(is.na(weather_data))
+
+# Summary statistics
+summary(weather_data)
+
+# Handle missing values (replace missing values with mean for numeric variables)
+# Example: Replace NA with mean for numeric variables
+weather_data$TEMP[is.na(weather_data$TEMP)] <- mean(weather_data$TEMP, na.rm = TRUE)
+weather_data$LATITUDE[is.na(weather_data$LATITUDE)] <- mean(weather_data$LATITUDE, na.rm = TRUE)
+weather_data$LONGITUDE[is.na(weather_data$LONGITUDE)] <- mean(weather_data$LONGITUDE, na.rm = TRUE)
+# Repeat for other numeric variables as needed
+
+# Alternatively, you can use the 'impute' package for more advanced imputation methods:
+# install.packages("impute")
+# library(impute)
+# weather_data <- impute.knn(weather_data)
+
+# Check if missing values have been handled
+sum(is.na(weather_data))
+
+# Now you can proceed with your analysis or modeling using the cleaned data
+
+
+# Check the structure of your data
+str(weather_data)
+summary(weather_data)
+# Fit the multiple linear regression model
+model <- lm(TEMP ~ LATITUDE + LONGITUDE + ELEVATION + DEWP + SLP + STP + VISIB + WDSP + MXSPD + GUST + PRCP + SNDP, data = weather_data)
+
+# Summarize the model
+summary(model)
+
+
+print(paste("RMSE: ", rmse))
+
+
+#############################splitting of the data#################################################################
+# Load necessary libraries
+library(caret)  # For data splitting
+library(dplyr)  # For data manipulation
+
+# Replace with your actual file path
+
+# Check the structure of your data
+str(weather_data)
+
+# Check for missing values
+sum(is.na(weather_data))
+
+# Handle missing values (replace missing values with mean for numeric variables)
+weather_data$TEMP[is.na(weather_data$TEMP)] <- mean(weather_data$TEMP, na.rm = TRUE)
+weather_data$LATITUDE[is.na(weather_data$LATITUDE)] <- mean(weather_data$LATITUDE, na.rm = TRUE)
+weather_data$LONGITUDE[is.na(weather_data$LONGITUDE)] <- mean(weather_data$LONGITUDE, na.rm = TRUE)
+# Repeat for other numeric variables as needed
+
+# Check if missing values have been handled
+sum(is.na(weather_data))
+
+# Split data into training (70%) and testing (30%)
+set.seed(123)  # Set seed for reproducibility
+train_index <- createDataPartition(weather_data$TEMP, p = 0.7, list = FALSE)
+train_data <- weather_data[train_index, ]
+test_data <- weather_data[-train_index, ]
+
+# Fit the multiple linear regression model on training data
+model <- lm(TEMP ~ LATITUDE + LONGITUDE + ELEVATION + DEWP + SLP + STP + VISIB + WDSP + MXSPD + GUST + PRCP + SNDP, data = train_data)
+
+# Print summary of the model
+summary(model)
+
+# Predict using the test data
+predictions <- predict(model, newdata = test_data)
+
+# Calculate RMSE (Root Mean Squared Error)
+rmse <- sqrt(mean((test_data$TEMP - predictions)^2))
+rmse
+
+
+##########################lasso##########################################################################
+# Prepare data for glmnet (matrix format required)
+x <- as.matrix(train_data[, c("LATITUDE", "LONGITUDE", "ELEVATION", "DEWP", "SLP", "STP", "VISIB", "WDSP", "MXSPD", "GUST", "PRCP", "SNDP")])
+y <- train_data$TEMP
+
+# Fit Lasso regression model
+lasso_model <- cv.glmnet(x, y, alpha = 1)  # alpha = 1 for Lasso
+
+# Print optimal lambda value
+lasso_model$lambda.min
+
+# Predict using the test data
+x_test <- as.matrix(test_data[, c("LATITUDE", "LONGITUDE", "ELEVATION", "DEWP", "SLP", "STP", "VISIB", "WDSP", "MXSPD", "GUST", "PRCP", "SNDP")])
+predictions <- predict(lasso_model, s = "lambda.min", newx = x_test)
+
+# Calculate RMSE (Root Mean Squared Error)
+rmse <- sqrt(mean((test_data$TEMP - predictions)^2))
+rmse
+
+# Print coefficients of the model
+coef(lasso_model, s = "lambda.min")
+
+# Optionally, you can visualize the coefficient path
+plot(lasso_model)
+
+########################################rigid#####################################
+# Split data into training (70%) and testing (30%)
+set.seed(123)  # Set seed for reproducibility
+train_index <- createDataPartition(weather_data$TEMP, p = 0.7, list = FALSE)
+train_data <- weather_data[train_index, ]
+test_data <- weather_data[-train_index, ]
+
+# Prepare data for glmnet (matrix format required)
+x <- as.matrix(train_data[, c("LATITUDE", "LONGITUDE", "ELEVATION", "DEWP", "SLP", "STP", "VISIB", "WDSP", "MXSPD", "GUST", "PRCP", "SNDP")])
+y <- train_data$TEMP
+
+# Fit Ridge regression model
+ridge_model <- cv.glmnet(x, y, alpha = 0)  # alpha = 0 for Ridge
+
+# Print optimal lambda value
+ridge_model$lambda.min
+
+# Predict using the test data
+x_test <- as.matrix(test_data[, c("LATITUDE", "LONGITUDE", "ELEVATION", "DEWP", "SLP", "STP", "VISIB", "WDSP", "MXSPD", "GUST", "PRCP", "SNDP")])
+predictions <- predict(ridge_model, s = "lambda.min", newx = x_test)
+
+# Calculate RMSE (Root Mean Squared Error)
+rmse <- sqrt(mean((test_data$TEMP - predictions)^2))
+rmse
+
+# Print coefficients of the model
+coef(ridge_model, s = "lambda.min")
+
+# Optionally, you can visualize the coefficient path
+plot(ridge_model)
+#######################################################################
